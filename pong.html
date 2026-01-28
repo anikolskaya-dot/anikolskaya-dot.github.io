@@ -3,40 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Пинг-Понг: Точный Удар</title>
+    <title>PONG: VOID TENNIS</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #222;
+            background-color: #000;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Courier New', monospace;
             touch-action: none;
+            color: #fff;
         }
 
         #gameCanvas {
             display: block;
             margin: 0 auto;
-            background: #2e7d32;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background: #000;
+            border-left: 1px solid #333;
+            border-right: 1px solid #333;
         }
 
+        /* UI Оверлеи */
         .overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: #000;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: white;
             z-index: 10;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s;
+            transition: opacity 0.2s;
+            text-align: center;
         }
 
         .overlay.active {
@@ -44,52 +47,62 @@
             pointer-events: auto;
         }
 
+        /* Скример */
+        #scaryScreen {
+            background: #fff; 
+            color: #000;
+            z-index: 20; 
+        }
+
         h1 {
-            font-size: 36px;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px black;
-            text-align: center;
-            line-height: 1.2;
+            font-size: 60px;
+            margin-bottom: 20px;
+            font-weight: normal;
+            letter-spacing: -2px;
+            text-transform: uppercase;
         }
 
         p {
             font-size: 16px;
-            margin-bottom: 20px;
-            text-align: center;
-            max-width: 85%;
-            line-height: 1.5;
-            color: #ddd;
+            margin-bottom: 40px;
+            max-width: 600px;
+            line-height: 1.8;
+            color: #888;
+        }
+
+        /* Кнопки */
+        .btn-group {
+            display: flex;
+            gap: 20px;
         }
 
         button {
             padding: 15px 40px;
-            font-size: 20px;
-            background: #ff9800;
-            color: white;
-            border: none;
-            border-radius: 50px;
+            font-size: 16px;
+            background: #000;
+            color: #fff;
+            border: 1px solid #fff;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            font-weight: bold;
+            font-family: 'Courier New', monospace;
             text-transform: uppercase;
+            transition: all 0.2s;
         }
 
-        button:active {
-            transform: scale(0.95);
+        button:hover {
+            background: #fff;
+            color: #000;
         }
 
         #hud {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            color: rgba(255, 255, 255, 0.9);
+            top: 20px;
+            left: 20px;
+            color: #fff;
             font-size: 14px;
             pointer-events: none;
             z-index: 5;
-            font-weight: bold;
-            background: rgba(0,0,0,0.3);
-            padding: 5px 10px;
-            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
         
         #timerBox {
@@ -97,131 +110,165 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 80px;
-            color: rgba(255, 255, 255, 0.15);
+            font-size: 150px;
+            color: #111; 
             font-weight: bold;
             pointer-events: none;
             z-index: 1;
+        }
+
+        /* Анимация мигания для скримера */
+        .glitch-anim {
+            animation: glitch 0.2s infinite;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-5px, 5px); }
+            40% { transform: translate(-5px, -5px); }
+            60% { transform: translate(5px, 5px); }
+            80% { transform: translate(5px, -5px); }
+            100% { transform: translate(0); }
         }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        Раунд: <span id="roundDisplay">1</span><br>
-        Скорость робота: <span id="speedDisplay">Низкая</span>
+        ROUND <span id="roundDisplay">1</span> // 
+        COMBO <span id="comboDisplay">0</span>
     </div>
 
     <div id="timerBox">30</div>
 
     <!-- Главное меню -->
     <div id="startScreen" class="overlay active">
-        <h1>ПИНГ-ПОНГ<br>ТОЧНОСТЬ</h1>
+        <h1>PONG_VOID</h1>
         <p>
-            Удерживай мяч 30 секунд.<br>
-            Целься в <b>светлый квадрат</b> в зоне противника.<br>
-            Мимо квадрата = <span style="color:#ff5252">АУТ</span>.
+            Удерживай мяч.<br>
+            2 попадания = Мульти-мяч.<br>
+            <b>Чёрная Точка</b> = СМЕРТЬ.<br>
+            <b style="color: #ff00ff">Розовая Точка</b> = ???
         </p>
-        <button id="btnStart">НАЧАТЬ</button>
+        <div class="btn-group">
+            <button onclick="window.startGame(1)">EASY</button>
+            <button onclick="window.startGame(2)">MEDIUM</button>
+            <button onclick="window.startGame(3)">HARD</button>
+        </div>
     </div>
 
     <!-- Экран проигрыша -->
     <div id="gameOverScreen" class="overlay">
-        <h1 id="loseReason" style="color: #ff5252">АУТ!</h1>
-        <p>Попробуй снова.</p>
-        <button id="btnRestart">ЗАНОВО</button>
+        <h1>FAILURE</h1>
+        <p>Сигнал потерян.</p>
+        <button id="btnRestart">RETRY</button>
     </div>
 
-    <!-- Экран победы в раунде -->
+    <!-- Экран победы -->
     <div id="nextRoundScreen" class="overlay">
-        <h1 style="color: #69f0ae">ПОБЕДА!</h1>
-        <p>Робот становится быстрее.</p>
-        <button id="btnNext">СЛЕДУЮЩИЙ РАУНД</button>
+        <h1>SYNCED</h1>
+        <p>Переход на следующий уровень.</p>
+        <button id="btnNext">PROCEED</button>
+    </div>
+
+    <!-- Скример -->
+    <div id="scaryScreen" class="overlay">
+        <h1 class="glitch-anim" style="font-size: 100px;">VOID</h1>
+        <h2 style="margin-top:20px;">DON'T TOUCH IT</h2>
+        <button onclick="location.reload()" style="margin-top:50px; border-color: black; background: white; color: black;">WAKE UP</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-    // Оборачиваем весь код в IIFE (Immediately Invoked Function Expression),
-    // чтобы изолировать переменные от глобальной области видимости.
     (function() {
-        // Глобальные переменные DOM (инициализируются в init)
+        // --- ПЕРЕМЕННЫЕ ---
         let canvas, ctx;
-        let timerDisplay, roundDisplay, speedDisplay;
-        let startScreen, gameOverScreen, nextRoundScreen, loseReasonText;
+        let timerDisplay, roundDisplay, comboDisplay;
+        let startScreen, gameOverScreen, nextRoundScreen, scaryScreen;
         
-        // Переменные состояния
         let gameRunning = false;
         let animationId;
         let timerInterval;
         
-        // Игровые параметры
         let round = 1;
         let timeLeft = 30;
+        let difficulty = 2;
         let aiBaseSpeed = 3; 
-        let aiSpeed = aiBaseSpeed;
+        let aiSpeed = 3;
         
-        // Переименовали w и h в gameWidth и gameHeight, чтобы избежать конфликтов
+        let enemyMisses = 0;
+        let enemyMood = 'normal'; 
+        let playerHitStreak = 0;
+
+        // Аномалия (Черная)
+        const anomaly = {
+            active: false,
+            x: 0,
+            y: 0,
+            radius: 20,
+            spawnTime: 0,
+            angle: 0
+        };
+
+        // Бонус (Розовая)
+        const pinkDot = {
+            active: false,
+            x: 0,
+            y: 0,
+            radius: 15
+        };
+
+        // Режим ЦВЕТА
+        let colorfulMode = {
+            active: false,
+            endTime: 0
+        };
+
         let gameWidth = 800; 
         let gameHeight = 600;
+        let balls = [];
 
-        // Игровые объекты
-        const ball = {
-            x: 0, y: 0, radius: 8, speed: 7, dx: 0, dy: 0, color: '#fff'
-        };
+        const paddleUser = { x: 0, y: 0, width: 120, height: 30, color: '#fff' };
+        const paddleAI = { x: 0, y: 0, width: 120, height: 60, color: '#fff' };
+        
+        const targetZone = { x: 0, y: 0, width: 0, height: 0 };
 
-        const paddleUser = {
-            x: 0, y: 0, width: 100, height: 15, color: '#2196f3'
-        };
-
-        const paddleAI = {
-            x: 0, y: 0, width: 70, height: 15, color: '#f44336'
-        };
-
-        const targetZone = {
-            x: 0, y: 0, width: 0, height: 0, color: 'rgba(255, 255, 255, 0.1)'
-        };
-
-        // --- ФУНКЦИИ УПРАВЛЕНИЯ ИГРОЙ ---
-
+        // --- ИНИЦИАЛИЗАЦИЯ ---
         function initGame() {
-            // Получаем ссылки на элементы
             canvas = document.getElementById('gameCanvas');
             timerDisplay = document.getElementById('timerBox');
             roundDisplay = document.getElementById('roundDisplay');
-            speedDisplay = document.getElementById('speedDisplay');
+            comboDisplay = document.getElementById('comboDisplay');
+            
             startScreen = document.getElementById('startScreen');
             gameOverScreen = document.getElementById('gameOverScreen');
             nextRoundScreen = document.getElementById('nextRoundScreen');
-            loseReasonText = document.getElementById('loseReason');
+            scaryScreen = document.getElementById('scaryScreen');
             
-            // Привязываем кнопки (безопасно)
-            const btnStart = document.getElementById('btnStart');
-            const btnRestart = document.getElementById('btnRestart');
-            const btnNext = document.getElementById('btnNext');
+            document.getElementById('btnRestart').onclick = restartGame;
+            document.getElementById('btnNext').onclick = nextRound;
 
-            if (btnStart) btnStart.onclick = startGame;
-            if (btnRestart) btnRestart.onclick = restartGame;
-            if (btnNext) btnNext.onclick = nextRound;
+            window.startGame = function(level) {
+                difficulty = level;
+                if (level === 1) aiBaseSpeed = 3;
+                if (level === 2) aiBaseSpeed = 5;
+                if (level === 3) aiBaseSpeed = 8;
+                round = 1;
+                aiSpeed = aiBaseSpeed;
+                startGameLogic();
+            };
 
             if (canvas && canvas.getContext) {
                 ctx = canvas.getContext('2d');
-                
-                // События ввода
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('touchmove', onTouchMove, { passive: false });
                 window.addEventListener('resize', resize);
-                
-                // Первый ресайз
                 resize();
-                // Запуск цикла отрисовки
                 loop();
-            } else {
-                console.error("Canvas element not found or not supported");
             }
         }
 
-        // Ждем полной загрузки страницы
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initGame);
         } else {
@@ -230,246 +277,427 @@
 
         function resize() {
             if (!canvas) return;
-            
             gameWidth = window.innerWidth;
             gameHeight = window.innerHeight;
-            
-            // Защита от 0 размеров
-            if (gameWidth < 100) gameWidth = 320;
-            if (gameHeight < 100) gameHeight = 480;
-
             canvas.width = gameWidth;
             canvas.height = gameHeight;
 
-            // Позиционирование элементов
-            paddleUser.y = gameHeight - 40;
-            paddleAI.y = 30;
+            paddleUser.y = gameHeight - 50;
+            paddleAI.y = 20;
 
-            targetZone.width = gameWidth * 0.8; // Увеличено с 0.6 до 0.8
+            targetZone.width = gameWidth * 0.9; 
             targetZone.height = (gameHeight / 2) - 10;
             targetZone.x = (gameWidth - targetZone.width) / 2;
             targetZone.y = 0;
 
-            if (!gameRunning) resetBallPosition();
+            if (!gameRunning) resetSingleBall();
         }
 
-        function resetBallPosition() {
-            ball.x = gameWidth / 2;
-            ball.y = gameHeight / 2;
+        function createBall(x, y, speedMult = 1) {
+            let baseSpeed = 4;
+            if (difficulty === 2) baseSpeed = 5;
+            if (difficulty === 3) baseSpeed = 7;
+            let speed = (baseSpeed + (round * 0.3)) * speedMult;
+
+            return {
+                x: x, y: y, radius: 8, speed: speed,
+                dx: (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 1),
+                dy: Math.abs(speed),
+                active: true
+            };
         }
 
-        function resetBallLaunch() {
-            resetBallPosition();
-            ball.speed = 4 + (round * 0.5); // Скорость снижена с 7 до 4
-            ball.dx = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 1); // Горизонтальная скорость тоже немного снижена
-            ball.dy = Math.abs(ball.speed); // Летит вниз к игроку
+        function resetSingleBall() {
+            balls = [];
+            balls.push(createBall(gameWidth / 2, gameHeight / 2));
         }
 
-        // Локальные функции (не доступны из window, но привязаны к кнопкам)
-        function startGame() {
-            round = 1;
-            aiSpeed = aiBaseSpeed;
-            startRound();
+        function spawnMultiball() {
+            enemyMood = 'shocked';
+            setTimeout(() => { if(enemyMood === 'shocked') enemyMood = 'normal'; }, 1000);
+            for(let i=0; i<3; i++) {
+                let offX = (Math.random() - 0.5) * 50;
+                balls.push(createBall(gameWidth/2 + offX, gameHeight/2, 0.9));
+            }
         }
+
+        function startGameLogic() { startRound(); }
 
         function restartGame() {
+            startScreen.classList.remove('active');
             round = 1;
             aiSpeed = aiBaseSpeed;
-            if(startScreen) startScreen.classList.remove('active');
-            if(gameOverScreen) gameOverScreen.classList.remove('active');
             startRound();
         }
 
         function nextRound() {
             round++;
-            aiSpeed += 5; 
-            if(nextRoundScreen) nextRoundScreen.classList.remove('active');
+            aiSpeed += 1.5; 
             startRound();
         }
 
         function startRound() {
-            if(startScreen) startScreen.classList.remove('active');
-            if(gameOverScreen) gameOverScreen.classList.remove('active');
-            if(nextRoundScreen) nextRoundScreen.classList.remove('active');
+            startScreen.classList.remove('active');
+            gameOverScreen.classList.remove('active');
+            nextRoundScreen.classList.remove('active');
             
             timeLeft = 30;
+            enemyMisses = 0;
+            enemyMood = 'normal';
+            playerHitStreak = 0;
+            anomaly.active = false;
+            pinkDot.active = false;
+            colorfulMode.active = false;
+            anomaly.spawnTime = Date.now() + 5000;
+
             updateHUD();
-            resetBallLaunch();
+            resetSingleBall();
             
-            // Центрируем ракетки
             paddleUser.x = (gameWidth - paddleUser.width) / 2;
             paddleAI.x = (gameWidth - paddleAI.width) / 2;
 
             gameRunning = true;
             
-            // Сброс и старт таймера
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 if (!gameRunning) return;
                 timeLeft--;
                 updateHUD();
-                if (timeLeft <= 0) {
-                    onRoundWin();
-                }
+                if (timeLeft <= 0) onRoundWin();
             }, 1000);
         }
 
         function updateHUD() {
             if(timerDisplay) timerDisplay.innerText = timeLeft;
             if(roundDisplay) roundDisplay.innerText = round;
-            if(speedDisplay) speedDisplay.innerText = aiSpeed;
+            if(comboDisplay) comboDisplay.innerText = playerHitStreak;
         }
 
         function onGameOver(reason) {
             gameRunning = false;
             clearInterval(timerInterval);
-            if (loseReasonText) loseReasonText.innerText = reason;
+            enemyMood = 'laughing'; 
+            draw();
             if (gameOverScreen) gameOverScreen.classList.add('active');
         }
 
         function onRoundWin() {
             gameRunning = false;
             clearInterval(timerInterval);
+            enemyMood = 'crying'; 
+            draw();
             if (nextRoundScreen) nextRoundScreen.classList.add('active');
         }
 
-        // --- ВВОД ---
-        function onMouseMove(e) {
-            if (gameRunning && canvas) {
-                movePaddle(e.clientX);
-            }
+        function triggerJumpscare() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            if (scaryScreen) scaryScreen.classList.add('active');
+            if (navigator.vibrate) navigator.vibrate(500);
         }
 
-        function onTouchMove(e) {
-            if (gameRunning && canvas && e.touches && e.touches.length > 0) {
-                e.preventDefault();
-                movePaddle(e.touches[0].clientX);
-            }
+        function activateColorfulMode() {
+            colorfulMode.active = true;
+            colorfulMode.endTime = Date.now() + 5000; // 5 секунд
         }
 
+        function onMouseMove(e) { if (gameRunning && canvas) movePaddle(e.clientX); }
+        function onTouchMove(e) { if (gameRunning && canvas && e.touches.length > 0) { e.preventDefault(); movePaddle(e.touches[0].clientX); } }
+        
         function movePaddle(clientX) {
             let relativeX = clientX - canvas.offsetLeft;
             let newX = relativeX - paddleUser.width / 2;
-
             if (newX < 0) newX = 0;
             if (newX + paddleUser.width > gameWidth) newX = gameWidth - paddleUser.width;
-
             paddleUser.x = newX;
         }
 
-        // --- ФИЗИКА И ОТРИСОВКА ---
-        function update() {
-            if (!gameRunning) return;
+        function updateObjects() {
+            const now = Date.now();
+            anomaly.angle += 0.05;
 
-            ball.x += ball.dx;
-            ball.y += ball.dy;
-
-            // Стены
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > gameWidth) {
-                ball.dx = -ball.dx;
+            // Таймер цвета
+            if (colorfulMode.active && now > colorfulMode.endTime) {
+                colorfulMode.active = false;
             }
+            
+            // Спавн точек
+            if (!anomaly.active) {
+                if (now > anomaly.spawnTime) {
+                    // Спавним черную
+                    anomaly.active = true;
+                    anomaly.spawnTime = now + 10000;
+                    anomaly.x = Math.random() * (gameWidth - 100) + 50;
+                    anomaly.y = Math.random() * (gameHeight / 2.5) + 50; 
 
-            // OUT check (верхняя половина)
-            if (ball.y < gameHeight / 2) {
-                // Если мяч не в зоне по горизонтали
-                if (ball.x < targetZone.x - ball.radius || ball.x > targetZone.x + targetZone.width + ball.radius) {
-                    // И летит вверх (от игрока)
-                    if (ball.dy < 0) {
-                        onGameOver("АУТ! (МИМО ЗОНЫ)");
-                        return;
+                    // Спавним розовую одновременно (в другом месте)
+                    pinkDot.active = true;
+                    pinkDot.x = Math.random() * (gameWidth - 100) + 50;
+                    pinkDot.y = Math.random() * (gameHeight / 2.5) + 50;
+
+                    // Если точки заспавнились слишком близко, двигаем розовую
+                    let dist = Math.sqrt(Math.pow(anomaly.x - pinkDot.x, 2) + Math.pow(anomaly.y - pinkDot.y, 2));
+                    if (dist < 100) {
+                        pinkDot.x = (pinkDot.x + 200) % gameWidth;
                     }
                 }
             }
+        }
 
-            // Пропуск (низ)
-            if (ball.y - ball.radius > gameHeight) {
-                onGameOver("ПРОПУСК! (МЯЧ УПАЛ)");
+        function update() {
+            if (!gameRunning) return;
+
+            updateObjects();
+
+            if (balls.length === 0) {
+                onGameOver();
                 return;
             }
 
-            // Потолок (отскок)
-            if (ball.y + ball.radius < 0) {
-                ball.dy = -ball.dy;
+            // AI Logic
+            let targetBall = null;
+            let minDist = Infinity;
+            for (let b of balls) {
+                if (b.dy < 0 || b.y < gameHeight/2) {
+                    let dist = Math.abs(b.y - paddleAI.y);
+                    if (dist < minDist) { minDist = dist; targetBall = b; }
+                }
             }
-
-            // Ракетка игрока
-            if (ball.y + ball.radius > paddleUser.y && 
-                ball.y - ball.radius < paddleUser.y + paddleUser.height &&
-                ball.x > paddleUser.x && 
-                ball.x < paddleUser.x + paddleUser.width) {
-                
-                ball.dy = -Math.abs(ball.speed);
-                // Угол отскока
-                let hitPoint = ball.x - (paddleUser.x + paddleUser.width / 2);
-                ball.dx = hitPoint * 0.15;
-                ball.speed += 0.2;
+            if (targetBall) {
+                let aiCenter = paddleAI.x + paddleAI.width / 2;
+                let reactionError = difficulty === 1 ? 50 : 0;
+                let targetX = targetBall.x + (Math.random() * reactionError - reactionError/2);
+                if (aiCenter < targetX - 10) paddleAI.x += aiSpeed;
+                else if (aiCenter > targetX + 10) paddleAI.x -= aiSpeed;
             }
-
-            // Ракетка AI
-            if (ball.y - ball.radius < paddleAI.y + paddleAI.height &&
-                ball.y + ball.radius > paddleAI.y &&
-                ball.x > paddleAI.x &&
-                ball.x < paddleAI.x + paddleAI.width) {
-                
-                ball.dy = Math.abs(ball.speed);
-            }
-
-            // AI Логика
-            let aiCenter = paddleAI.x + paddleAI.width / 2;
-            if (aiCenter < ball.x - 10) paddleAI.x += aiSpeed;
-            else if (aiCenter > ball.x + 10) paddleAI.x -= aiSpeed;
-
             if (paddleAI.x < 0) paddleAI.x = 0;
             if (paddleAI.x + paddleAI.width > gameWidth) paddleAI.x = gameWidth - paddleAI.width;
+
+            // Physics
+            for (let i = balls.length - 1; i >= 0; i--) {
+                let b = balls[i];
+                b.x += b.dx;
+                b.y += b.dy;
+
+                if (b.x - b.radius < 0 || b.x + b.radius > gameWidth) b.dx = -b.dx;
+
+                // Hit Anomaly (Black)
+                if (anomaly.active) {
+                    let dx = b.x - anomaly.x;
+                    let dy = b.y - anomaly.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < b.radius + anomaly.radius) {
+                        triggerJumpscare();
+                        return;
+                    }
+                }
+
+                // Hit Pink Dot
+                if (pinkDot.active) {
+                    let dx = b.x - pinkDot.x;
+                    let dy = b.y - pinkDot.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < b.radius + pinkDot.radius) {
+                        activateColorfulMode();
+                        pinkDot.active = false; // Точка исчезает после сбора
+                    }
+                }
+
+                // Out Zone (Top)
+                if (b.y < gameHeight / 2) {
+                    if (b.x < targetZone.x - b.radius || b.x > targetZone.x + targetZone.width + b.radius) {
+                        if (b.dy < 0) { balls.splice(i, 1); continue; }
+                    }
+                }
+
+                // Lost (Bottom)
+                if (b.y - b.radius > gameHeight) { balls.splice(i, 1); continue; }
+
+                // Enemy Miss (Top)
+                if (b.y + b.radius < 0) {
+                    enemyMisses++;
+                    if (enemyMisses >= 3) enemyMood = 'angry';
+                    b.y = 50; b.dy = Math.abs(b.speed); b.dx = (Math.random() - 0.5) * 5;
+                }
+
+                // Paddle Collision
+                if (b.y + b.radius > paddleUser.y && b.y - b.radius < paddleUser.y + paddleUser.height &&
+                    b.x > paddleUser.x && b.x < paddleUser.x + paddleUser.width) {
+                    b.dy = -Math.abs(b.speed);
+                    b.dx = (b.x - (paddleUser.x + paddleUser.width / 2)) * 0.25;
+                    playerHitStreak++;
+                    updateHUD();
+                    if (playerHitStreak % 2 === 0 && balls.length < 12) spawnMultiball();
+                }
+
+                if (b.y - b.radius < paddleAI.y + paddleAI.height && b.y + b.radius > paddleAI.y &&
+                    b.x > paddleAI.x && b.x < paddleAI.x + paddleAI.width) {
+                    b.dy = Math.abs(b.speed);
+                }
+            }
+        }
+
+        // --- DRAW UTILS ---
+        function getThemeColor(defaultColor) {
+            if (colorfulMode.active) {
+                return `hsl(${Math.random() * 360}, 100%, 50%)`;
+            }
+            return defaultColor;
+        }
+
+        function getBgColor() {
+            if (colorfulMode.active) {
+                // В режиме цвета фон немного светлее (очень темно серый), чтобы цвета выделялись, 
+                // или случайный темный оттенок
+                return `hsl(${Math.random() * 360}, 50%, 10%)`; 
+            }
+            return '#000';
+        }
+
+        function drawRacket(x, y, w, h, isAI) {
+            let color = getThemeColor("#fff");
+            
+            // Ручка
+            ctx.fillStyle = color;
+            let handleW = 10;
+            let handleH = 30;
+            let handleX = x + w/2 - handleW/2;
+            let handleY = isAI ? y - handleH : y + h;
+            ctx.fillRect(handleX, handleY, handleW, handleH);
+
+            // Обод
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Струны
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for(let i=x+10; i<x+w; i+=15) { if(i > x && i < x+w) { ctx.moveTo(i, y); ctx.lineTo(i, y+h); } }
+            for(let i=y+10; i<y+h; i+=15) { if(i > y && i < y+h) { ctx.moveTo(x, i); ctx.lineTo(x+w, i); } }
+            ctx.stroke();
+        }
+
+        function drawHumanisticFace(x, y, w, h, mood) {
+            let cx = x + w / 2;
+            let cy = y + h / 2;
+            let color = getThemeColor("#fff");
+            let faceBg = colorfulMode.active ? getThemeColor("#000") : "#000";
+
+            ctx.fillStyle = faceBg; 
+            ctx.beginPath(); ctx.ellipse(cx, cy, 30, 25, 0, 0, Math.PI*2); ctx.fill();
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+
+            if (mood === 'angry') {
+                ctx.beginPath();
+                ctx.moveTo(cx-20, cy-10); ctx.lineTo(cx-5, cy-5);
+                ctx.moveTo(cx+20, cy-10); ctx.lineTo(cx+5, cy-5);
+                ctx.stroke();
+                ctx.fillStyle = color;
+                ctx.beginPath(); ctx.arc(cx-12, cy, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx+12, cy, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx, cy+15, 10, Math.PI, 0); ctx.stroke();
+            } else if (mood === 'shocked') {
+                ctx.beginPath(); ctx.arc(cx-12, cy-10, 5, Math.PI, 0); ctx.stroke();
+                ctx.arc(cx+12, cy-10, 5, Math.PI, 0); ctx.stroke();
+                ctx.fillStyle = color;
+                ctx.beginPath(); ctx.arc(cx-12, cy, 4, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx+12, cy, 4, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(cx, cy+12, 5, 8, 0, 0, Math.PI*2); ctx.stroke();
+            } else if (mood === 'laughing') {
+                ctx.beginPath(); ctx.moveTo(cx-20, cy); ctx.lineTo(cx-12, cy-5); ctx.lineTo(cx-5, cy);
+                ctx.moveTo(cx+5, cy); ctx.lineTo(cx+12, cy-5); ctx.lineTo(cx+20, cy); ctx.stroke();
+                ctx.beginPath(); ctx.arc(cx, cy+5, 12, 0, Math.PI, false); ctx.stroke();
+            } else if (mood === 'crying') {
+                ctx.beginPath(); ctx.moveTo(cx-20, cy-5); ctx.lineTo(cx-5, cy-5); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx+5, cy-5); ctx.lineTo(cx+20, cy-5); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx-12, cy); ctx.lineTo(cx-12, cy+15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx+12, cy); ctx.lineTo(cx+12, cy+15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx-10, cy+15); ctx.bezierCurveTo(cx-5, cy+10, cx+5, cy+20, cx+10, cy+15); ctx.stroke();
+            } else {
+                ctx.fillStyle = color;
+                ctx.beginPath(); ctx.arc(cx-12, cy-2, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx+12, cy-2, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cx-8, cy+12); ctx.lineTo(cx+8, cy+12); ctx.stroke();
+            }
         }
 
         function draw() {
             if (!ctx) return;
             
-            // Фон
-            ctx.fillStyle = '#2e7d32';
+            ctx.fillStyle = getBgColor();
             ctx.fillRect(0, 0, gameWidth, gameHeight);
 
-            // Сетка
-            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-            ctx.lineWidth = 4;
-            ctx.setLineDash([20, 15]);
-            ctx.beginPath();
-            ctx.moveTo(0, gameHeight / 2);
-            ctx.lineTo(gameWidth, gameHeight / 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            let mainColor = getThemeColor("#fff");
+            let dimmedColor = getThemeColor("#333");
+            let zoneColor = getThemeColor("#444");
+
+            // Линия центра
+            ctx.strokeStyle = dimmedColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(0, gameHeight/2); ctx.lineTo(gameWidth, gameHeight/2); ctx.stroke();
 
             // Зона
-            ctx.fillStyle = targetZone.color;
-            ctx.fillRect(targetZone.x, targetZone.y, targetZone.width, targetZone.height);
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(targetZone.x, targetZone.y, targetZone.width, targetZone.height);
-
-            // Маркеры OUT/IN
-            ctx.font = "bold 20px sans-serif";
-            ctx.fillStyle = "rgba(255,50,50,0.3)";
-            ctx.fillText("OUT", 20, gameHeight/4);
-            ctx.fillText("OUT", gameWidth - 70, gameHeight/4);
-            ctx.fillStyle = "rgba(255,255,255,0.3)";
-            ctx.fillText("TARGET ZONE", gameWidth/2 - 70, gameHeight/4);
+            ctx.strokeStyle = zoneColor;
+            let zx = targetZone.x; let zw = targetZone.width;
+            ctx.beginPath(); ctx.moveTo(zx, 0); ctx.lineTo(zx, 20); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(zx + zw, 0); ctx.lineTo(zx + zw, 20); ctx.stroke();
+            
+            ctx.fillStyle = colorfulMode.active ? getThemeColor("#fff") : "#1a1a1a";
+            ctx.font = "bold 40px Courier New";
+            ctx.fillText("X", zx / 2, 40);
+            ctx.fillText("X", zx + zw + (gameWidth - (zx + zw))/2, 40);
 
             // Ракетки
-            ctx.fillStyle = paddleUser.color;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "black";
-            ctx.fillRect(paddleUser.x, paddleUser.y, paddleUser.width, paddleUser.height);
+            drawRacket(paddleUser.x, paddleUser.y, paddleUser.width, paddleUser.height, false);
+            drawRacket(paddleAI.x, paddleAI.y, paddleAI.width, paddleAI.height, true);
+            
+            // Лицо
+            drawHumanisticFace(paddleAI.x, paddleAI.y, paddleAI.width, paddleAI.height, enemyMood);
 
-            ctx.fillStyle = paddleAI.color;
-            ctx.fillRect(paddleAI.x, paddleAI.y, paddleAI.width, paddleAI.height);
-            ctx.shadowBlur = 0;
+            // Аномалия (Черная)
+            if (anomaly.active) {
+                ctx.save();
+                ctx.translate(anomaly.x, anomaly.y);
+                ctx.rotate(anomaly.angle);
+                ctx.strokeStyle = mainColor;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath(); ctx.arc(0, 0, anomaly.radius + 5, 0, Math.PI * 2); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
 
-            // Мяч
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = ball.color;
-            ctx.fill();
+                ctx.fillStyle = "#000";
+                ctx.beginPath(); ctx.arc(anomaly.x, anomaly.y, anomaly.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = mainColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(anomaly.x, anomaly.y, anomaly.radius, 0, Math.PI * 2); ctx.stroke();
+            }
+
+            // Бонус (Розовая)
+            if (pinkDot.active) {
+                // Если режим уже цветной, розовая точка меняет цвет
+                let dotColor = colorfulMode.active ? getThemeColor("#ff00ff") : "#ff00ff";
+                ctx.fillStyle = dotColor;
+                ctx.beginPath(); ctx.arc(pinkDot.x, pinkDot.y, pinkDot.radius, 0, Math.PI * 2); ctx.fill();
+                
+                // Пульсация
+                ctx.strokeStyle = dotColor;
+                ctx.lineWidth = 1;
+                ctx.beginPath(); 
+                ctx.arc(pinkDot.x, pinkDot.y, pinkDot.radius + Math.sin(Date.now()/200)*3 + 3, 0, Math.PI * 2); 
+                ctx.stroke();
+            }
+
+            // Мячи
+            ctx.fillStyle = mainColor;
+            for (let b of balls) {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
         function loop() {
@@ -478,11 +706,11 @@
                 draw();
                 animationId = requestAnimationFrame(loop);
             } catch (err) {
-                console.error("Game loop crashed", err);
+                console.error("Loop failed", err);
                 gameRunning = false;
             }
         }
-    })(); // Конец IIFE
+    })();
     </script>
 </body>
 </html>
