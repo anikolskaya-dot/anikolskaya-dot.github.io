@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chaos Billiards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap');
+
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #2a2a2a 0%, #000000 100%);
+        }
+
+        canvas {
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            cursor: crosshair;
+            transition: filter 0.5s ease;
+        }
+
+        /* Эффекты Хаоса */
+        .effect-grayscale {
+            filter: grayscale(100%) contrast(1.2);
+        }
+        
+        .effect-pixelate {
+            image-rendering: pixelated;
+            filter: contrast(1.5) saturate(1.2);
+        }
+
+        /* UI Элементы */
+        .ui-panel {
+            position: absolute;
+            pointer-events: none;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .controls-hint {
+            text-align: center;
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 1rem;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        .menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            pointer-events: auto;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff4b1f, #ff9068);
+            border: none;
+            padding: 15px 40px;
+            margin: 10px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(255, 75, 31, 0.4);
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(255, 75, 31, 0.6);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(45deg, #1f4bff, #6890ff);
+            box-shadow: 0 4px 15px rgba(31, 75, 255, 0.4);
+        }
+
+        .difficulty-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .diff-btn {
+            background: #333;
+            border: 2px solid #555;
+            padding: 10px 20px;
+            color: #aaa;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+
+        .diff-btn.active {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+            box-shadow: 0 0 10px white;
+        }
+
+        .notification {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 40;
+            border: 2px solid white;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="poolCanvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div class="ui-panel">
+        <div class="hud">
+            <div id="player-score" class="text-blue-400">Игрок: 0</div>
+            <div id="turn-indicator" class="text-white bg-black/50 px-4 rounded">Ваш ход</div>
+            <div id="bot-score" class="text-red-400">Бот: 0</div>
+        </div>
+        <div class="controls-hint">Тяните мышь НАЗАД, чтобы ударить (как из рогатки)</div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">ДЕМОН ПОЯВИЛСЯ!</div>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="menu-overlay">
+        <h1 class="text-5xl mb-8 font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600" style="font-family: 'Press Start 2P', cursive; line-height: 1.5;">CHAOS POOL</h1>
+        
+        <div class="mb-4 text-gray-300">Выберите сложность бота:</div>
+        <div class="difficulty-select">
+            <button class="diff-btn active" onclick="setDifficulty('easy')">Лайт</button>
+            <button class="diff-btn" onclick="setDifficulty('medium')">Медиум</button>
+            <button class="diff-btn" onclick="setDifficulty('hard')">Хард</button>
+        </div>
+
+        <button class="btn" onclick="startGame()">Начать Игру</button>
+        <div class="mt-8 max-w-md text-center text-xs text-gray-400">
+            <p>Каждый ход игра мутирует.</p>
+            <p>1. Нуар | 2. Пиксели | 3. Демон</p>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="menu-overlay hidden">
+        <h1 id="winner-text" class="text-4xl mb-6 font-bold text-white">ПОБЕДА</h1>
+        <button class="btn secondary" onclick="location.reload()">Играть снова</button>
+    </div>
+</div>
+
+<script>
+/**
+ * CHAOS BILLIARDS - Game Logic
+ */
+
+// --- Constants & Config ---
+const CANVAS_WIDTH = 1000;
+const CANVAS_HEIGHT = 550;
+const BALL_RADIUS = 12;
+const POCKET_RADIUS = 22;
+const CUSHION_WIDTH = 30;
+const FRICTION = 0.985;
+const WALL_BOUNCE = 0.7;
+const MAX_POWER = 30;
+
+// Colors
+const COLOR_TABLE = '#2e8b57';
+const COLOR_WOOD = '#5c4033';
+const BALL_COLORS = [
+    '#9932CC', // 0 - Cue Ball (PURPLE/VIOLET)
+    '#FFFF00', '#0000FF', '#FF0000', '#800080', '#FFA500', '#008000', '#800000', // Solids 1-7
+    '#000000', // 8 - Black
+    '#FFFF00', '#0000FF', '#FF0000', '#800080', '#FFA500', '#008000', '#800000'  // Stripes 9-15
+];
+
+// Chaos States
+const CHAOS = {
+    BW: false, // Turn 1 trigger
+    PIXEL: false, // Turn 2 trigger
+    EVASIVE: false, // Turn 3 trigger
+    DEMON_ACTIVE: false, // Turn 3+ trigger
+    VOIDS: [] // Holes created by demon
+};
+
+// --- Game State ---
+const canvas = document.getElementById('poolCanvas');
+const ctx = canvas.getContext('2d');
+let animationId;
+let balls = [];
+let pockets = [];
+let demon = null;
+let chaosHole = null; // The hole that triggers effects
+
+let gameState = {
+    turn: 'player', // 'player' or 'bot'
+    isShooting: false,
+    ballsMoving: false,
+    power: 0,
+    aimAngle: 0,
+    difficulty: 'easy',
+    turnCount: 0,
+    playerScore: 0,
+    botScore: 0,
+    gameOver: false,
+    chaosPhase: 0
+};
+
+// Difficulty Settings (Accuracy error in radians)
+const DIFFICULTY = {
+    easy: 0.5,    // Huge error
+    medium: 0.1,  // Small error
+    hard: 0.02    // Tiny error
+};
+
+// --- Classes ---
+
+class Vector {
+    constructor(x, y) { this.x = x; this.y = y; }
+    add(v) { return new Vector(this.x + v.x, this.y + v.y); }
+    sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
+    mult(s) { return new Vector(this.x * s, this.y * s); }
+    mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+    normalize() { let m = this.mag(); return m === 0 ? new Vector(0,0) : new Vector(this.x / m, this.y / m); }
+    dist(v) { return Math.sqrt(Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2)); }
+    static dot(v1, v2) { return v1.x * v2.x + v1.y * v2.y; }
+}
+
+class Ball {
+    constructor(x, y, id) {
+        this.pos = new Vector(x, y);
+        this.vel = new Vector(0, 0);
+        this.id = id;
+        this.radius = BALL_RADIUS;
+        this.active = true;
+        this.isStripe = id > 8;
+        this.color = BALL_COLORS[id];
+    }
+
+    update() {
+        if (!this.active) return;
+
+        // Friction
+        this.vel = this.vel.mult(FRICTION);
+        if (this.vel.mag() < 0.05) this.vel = new Vector(0, 0);
+
+        this.pos = this.pos.add(this.vel);
+
+        // Wall Collisions
+        if (this.pos.x < CUSHION_WIDTH + this.radius) {
+            this.pos.x = CUSHION_WIDTH + this.radius;
+            this.vel.x *= -WALL_BOUNCE;
+        } else if (this.pos.x > CANVAS_WIDTH - CUSHION_WIDTH - this.radius) {
+            this.pos.x = CANVAS_WIDTH - CUSHION_WIDTH - this.radius;
+            this.vel.x *= -WALL_BOUNCE;
+        }
+
+        if (this.pos.y < CUSHION_WIDTH + this.radius) {
+            this.pos.y = CUSHION_WIDTH + this.radius;
+            this.vel.y *= -WALL_BOUNCE;
+        } else if (this.pos.y > CANVAS_HEIGHT - CUSHION_WIDTH - this.radius) {
+            this.pos.y = CANVAS_HEIGHT - CUSHION_WIDTH - this.radius;
+            this.vel.y *= -WALL_BOUNCE;
+        }
+
+        // Pocket Detection
+        let activePockets = pockets;
+        for (let p of activePockets) {
+            let killDist = CHAOS.EVASIVE ? POCKET_RADIUS * 0.7 : POCKET_RADIUS;
+            if (this.pos.dist(p.pos) < killDist) {
+                this.pot();
+            }
+        }
+
+        // --- Chaos Hole Detection (PLAYER ONLY) ---
+        if (gameState.turn === 'player' && chaosHole && this.pos.dist(chaosHole.pos) < chaosHole.radius) {
+            triggerChaosEffect(chaosHole.type);
+            chaosHole = null; // Remove after activation
+        }
+
+        // --- Void Zone Detection (PLAYER ONLY) ---
+        if (gameState.turn === 'player') {
+            for (let v of CHAOS.VOIDS) {
+                if (this.pos.dist(v.pos) < v.radius) {
+                    this.active = false;
+                    // If Cue ball, respawn
+                    if (this.id === 0) {
+                        setTimeout(() => resetCueBall(), 500);
+                    }
+                }
+            }
+        }
+    }
+
+    pot() {
+        this.active = false;
+        if (this.id === 0) {
+            // Scratch (White ball)
+            setTimeout(() => resetCueBall(), 500);
+        } else if (this.id === 8) {
+            if (gameState.turn === 'player') gameState.playerScore += 10;
+            else gameState.botScore += 10;
+        } else {
+            if (gameState.turn === 'player') gameState.playerScore++;
+            else gameState.botScore++;
+        }
+    }
+
+    draw() {
+        if (!this.active) return;
+        
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        
+        // Stripe
+        if (this.isStripe) {
+            ctx.beginPath();
+            ctx.rect(this.pos.x - this.radius, this.pos.y - this.radius/2, this.radius*2, this.radius);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+        }
+
+        // Shine/Lighting
+        ctx.beginPath();
+        ctx.arc(this.pos.x - 3, this.pos.y - 3, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fill();
+       
+       ctx.strokeStyle = '#000';
+       ctx.lineWidth = 1;
+       ctx.stroke();
+    }
+}
+
+class Demon {
+    constructor() {
+        this.pos = new Vector(CANVAS_WIDTH/2, -50);
+        this.active = true;
+        this.target = null;
+        this.speed = 1.5;
+    }
+
+    update() {
+        if (!this.active) return;
+
+        // Find closest moving ball
+        let closest = null;
+        let minDist = 9999;
+        
+        balls.forEach(b => {
+            if (b.active && b.vel.mag() > 0.1) {
+                let d = this.pos.dist(b.pos);
+                if (d < minDist) {
+                    minDist = d;
+                    closest = b;
+                }
+            }
+        });
+
+        this.target = closest;
+
+        if (this.target) {
+            let dir = this.target.pos.sub(this.pos).normalize();
+            this.pos = this.pos.add(dir.mult(this.speed));
+
+            // Catch logic
+            if (this.pos.dist(this.target.pos) < this.target.radius + 15) {
+                this.eat(this.target);
+            }
+        } else {
+            // No moving balls, hover in center or leave
+            if (this.pos.y > -50) this.pos.y -= 1; 
+        }
+    }
+
+    eat(ball) {
+        ball.active = false;
+        
+        // Create permanent void hole
+        CHAOS.VOIDS.push({
+            pos: new Vector(ball.pos.x, ball.pos.y),
+            radius: 25
+        });
+
+        this.active = false;
+        notify("ДЕМОН СЪЕЛ ШАР!");
+        
+        if (ball.id === 0) {
+            setTimeout(resetCueBall, 1000);
+        }
+    }
+
+    draw() {
+        if (!this.active) return;
+        
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'red';
+        
+        ctx.fillStyle = '#8b0000';
+        ctx.beginPath();
+        ctx.arc(0, 0, 20, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.moveTo(-8, -5); ctx.lineTo(-2, -5); ctx.lineTo(-5, 0);
+        ctx.moveTo(8, -5); ctx.lineTo(2, -5); ctx.lineTo(5, 0);
+        ctx.fill();
+        
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 5, 10, 0, Math.PI, false);
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+}
+
+// --- Init & Helper Functions ---
+
+function initGame() {
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+    
+    pockets = [
+        { pos: new Vector(CUSHION_WIDTH, CUSHION_WIDTH) }, // TL
+        { pos: new Vector(CANVAS_WIDTH/2, CUSHION_WIDTH - 5) }, // TM
+        { pos: new Vector(CANVAS_WIDTH - CUSHION_WIDTH, CUSHION_WIDTH) }, // TR
+        { pos: new Vector(CUSHION_WIDTH, CANVAS_HEIGHT - CUSHION_WIDTH) }, // BL
+        { pos: new Vector(CANVAS_WIDTH/2, CANVAS_HEIGHT - CUSHION_WIDTH + 5) }, // BM
+        { pos: new Vector(CANVAS_WIDTH - CUSHION_WIDTH, CANVAS_HEIGHT - CUSHION_WIDTH) } // BR
+    ];
+
+    resetTable();
+    setupInput();
+    gameLoop();
+}
+
+function resetTable() {
+    balls = [];
+    
+    balls.push(new Ball(CANVAS_WIDTH / 4, CANVAS_HEIGHT / 2, 0));
+
+    let startX = CANVAS_WIDTH * 0.75;
+    let startY = CANVAS_HEIGHT / 2;
+    let r = BALL_RADIUS;
+    let n = 1;
+    
+    for (let col = 0; col < 5; col++) {
+        for (let row = 0; row <= col; row++) {
+            let x = startX + (col * r * 1.8);
+            let y = (startY - (col * r)) + (row * r * 2) + Math.random();
+            if (n < 16) {
+                let id = n;
+                if (col === 2 && row === 1) id = 8;
+                else if (id === 8) id = 15;
+                balls.push(new Ball(x, y, id));
+                n++;
+            }
+        }
+    }
+}
+
+function resetCueBall() {
+    let cb = balls.find(b => b.id === 0);
+    if (!cb) {
+        cb = new Ball(CANVAS_WIDTH / 4, CANVAS_HEIGHT / 2, 0);
+        balls.unshift(cb);
+    }
+    cb.pos = new Vector(CANVAS_WIDTH / 4, CANVAS_HEIGHT / 2);
+    cb.vel = new Vector(0, 0);
+    cb.active = true;
+}
+
+function setDifficulty(level) {
+    gameState.difficulty = level;
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+function startGame() {
+    document.getElementById('main-menu').style.display = 'none';
+    gameState.gameOver = false;
+    gameState.turnCount = 0;
+    CHAOS.BW = false;
+    CHAOS.PIXEL = false;
+    CHAOS.EVASIVE = false;
+    CHAOS.DEMON_ACTIVE = false;
+    CHAOS.VOIDS = [];
+    
+    canvas.className = '';
+    resetTable();
+}
+
+function nextTurn() {
+    gameState.turn = gameState.turn === 'player' ? 'bot' : 'player';
+    gameState.turnCount++;
+    
+    document.getElementById('turn-indicator').innerText = gameState.turn === 'player' ? "Ваш ход" : "Ход Бота";
+    document.getElementById('turn-indicator').className = gameState.turn === 'player' ? "text-white bg-green-600/50 px-4 rounded" : "text-white bg-red-600/50 px-4 rounded";
+
+    spawnChaosHole();
+
+    if (gameState.turnCount >= 3) {
+        CHAOS.EVASIVE = true;
+        notify("ЛУНКИ ДВИГАЮТСЯ!");
+        if (Math.random() > 0.3) {
+            spawnDemon();
+        }
+    }
+
+    if (gameState.turn === 'bot') {
+        setTimeout(botPlay, 1000);
+    }
+}
+
+function spawnChaosHole() {
+    let type = 'normal';
+    if (!CHAOS.BW) type = 'bw';
+    else if (!CHAOS.PIXEL) type = 'pixel';
+    else type = 'random'; 
+
+    let x = CUSHION_WIDTH + 50 + Math.random() * (CANVAS_WIDTH - CUSHION_WIDTH*2 - 100);
+    let y = CUSHION_WIDTH + 50 + Math.random() * (CANVAS_HEIGHT - CUSHION_WIDTH*2 - 100);
+
+    chaosHole = {
+        pos: new Vector(x, y),
+        radius: 20,
+        type: type,
+        pulse: 0
+    };
+    
+    let msg = "";
+    if(type === 'bw') msg = "ДЫРА НУАРА ПОЯВИЛАСЬ";
+    else if(type === 'pixel') msg = "ГЛЮЧНАЯ ДЫРА ПОЯВИЛАСЬ";
+    else msg = "ДЫРА ХАОСА";
+    notify(msg);
+}
+
+function triggerChaosEffect(type) {
+    if (type === 'bw' && !CHAOS.BW) {
+        CHAOS.BW = true;
+        canvas.classList.add('effect-grayscale');
+        notify("РЕЖИМ НУАР АКТИВИРОВАН");
+    } else if (type === 'pixel' && !CHAOS.PIXEL) {
+        CHAOS.PIXEL = true;
+        canvas.classList.add('effect-pixelate'); 
+        notify("8-BIT РЕЖИМ АКТИВИРОВАН");
+    }
+}
+
+function spawnDemon() {
+    notify("ДЕМОН ПРОСНУЛСЯ!");
+    CHAOS.DEMON_ACTIVE = true;
+    demon = new Demon();
+}
+
+function notify(text) {
+    const el = document.getElementById('notification');
+    el.innerText = text;
+    el.style.opacity = 1;
+    setTimeout(() => { el.style.opacity = 0; }, 3000);
+}
+
+// --- Input Handling (Slingshot) ---
+let mouse = new Vector(0, 0);
+let dragStart = null;
+let dragCurrent = null;
+
+function setupInput() {
+    const updateMouse = (x, y) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        mouse.x = (x - rect.left) * scaleX;
+        mouse.y = (y - rect.top) * scaleY;
+    };
+
+    canvas.addEventListener('mousemove', e => {
+        updateMouse(e.clientX, e.clientY);
+        if (dragStart) {
+            dragCurrent = new Vector(mouse.x, mouse.y);
+        }
+    });
+
+    canvas.addEventListener('mousedown', () => {
+        if (gameState.turn === 'player' && !gameState.ballsMoving) {
+            dragStart = new Vector(mouse.x, mouse.y);
+            dragCurrent = new Vector(mouse.x, mouse.y);
+            gameState.isShooting = true;
+        }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+        if (gameState.turn === 'player' && dragStart) {
+            let dragVec = dragStart.sub(dragCurrent);
+            let power = dragVec.mag() * 0.15;
+            power = Math.min(power, MAX_POWER);
+            if (power > 1) {
+                let dir = dragVec.normalize();
+                shootCueBall(dir, power);
+            }
+            dragStart = null;
+            dragCurrent = null;
+            gameState.isShooting = false;
+        }
+    });
+    
+    // Touch
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        updateMouse(touch.clientX, touch.clientY);
+        
+        if (gameState.turn === 'player' && !gameState.ballsMoving) {
+            dragStart = new Vector(mouse.x, mouse.y);
+            dragCurrent = new Vector(mouse.x, mouse.y);
+            gameState.isShooting = true;
+        }
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!dragStart) return;
+        const touch = e.touches[0];
+        updateMouse(touch.clientX, touch.clientY);
+        dragCurrent = new Vector(mouse.x, mouse.y);
+    });
+
+    canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (gameState.turn === 'player' && dragStart) {
+            let dragVec = dragStart.sub(dragCurrent);
+            let power = dragVec.mag() * 0.15;
+            power = Math.min(power, MAX_POWER);
+            if (power > 1) {
+                let dir = dragVec.normalize();
+                shootCueBall(dir, power);
+            }
+            dragStart = null;
+            dragCurrent = null;
+            gameState.isShooting = false;
+        }
+    });
+}
+
+function shootCueBall(dir, power) {
+    const cueBall = balls[0];
+    if (!cueBall) return;
+    cueBall.vel = dir.mult(power);
+    gameState.ballsMoving = true;
+}
+
+// --- AI Logic ---
+function botPlay() {
+    if (gameState.turn !== 'bot') return;
+    const cueBall = balls[0];
+    if (!cueBall) { nextTurn(); return; }
+
+    let validBalls = balls.filter(b => b.id !== 0 && b.active);
+    if (validBalls.length === 0) return; 
+    
+    let targetBall = validBalls[Math.floor(Math.random() * validBalls.length)];
+    let targetPocket = pockets[Math.floor(Math.random() * pockets.length)];
+
+    let pocketVec = targetPocket.pos.sub(targetBall.pos).normalize();
+    let ghostPos = targetBall.pos.sub(pocketVec.mult(BALL_RADIUS * 2));
+    let shotDir = ghostPos.sub(cueBall.pos).normalize();
+
+    let errorRad = DIFFICULTY[gameState.difficulty];
+    let angle = Math.atan2(shotDir.y, shotDir.x);
+    angle += (Math.random() * errorRad * 2) - errorRad;
+    
+    let finalDir = new Vector(Math.cos(angle), Math.sin(angle));
+    let power = 15 + Math.random() * 10; 
+
+    cueBall.vel = finalDir.mult(power);
+    gameState.ballsMoving = true;
+}
+
+// --- Physics Engine ---
+
+function resolveCollisions() {
+    for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+            let b1 = balls[i];
+            let b2 = balls[j];
+            if (!b1.active || !b2.active) continue;
+
+            let dist = b1.pos.dist(b2.pos);
+            if (dist < b1.radius + b2.radius) {
+                let normal = b2.pos.sub(b1.pos).normalize();
+                let relVel = b1.vel.sub(b2.vel);
+                let sepVel = Vector.dot(relVel, normal);
+                let new_sepVel = -sepVel * 0.9;
+                let sepVelVec = normal.mult(new_sepVel - sepVel);
+                
+                let overlap = (b1.radius + b2.radius - dist) / 2;
+                b1.pos = b1.pos.sub(normal.mult(overlap));
+                b2.pos = b2.pos.add(normal.mult(overlap));
+
+                b1.vel = b1.vel.add(sepVelVec.mult(0.5));
+                b2.vel = b2.vel.sub(sepVelVec.mult(0.5));
+            }
+        }
+    }
+}
+
+// --- Main Loop ---
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+function update() {
+    if (gameState.gameOver) return;
+
+    let movingCount = 0;
+    balls.forEach(b => {
+        if (b.active) {
+            b.update();
+            if (b.vel.mag() > 0) movingCount++;
+        }
+    });
+    
+    resolveCollisions();
+
+    if (CHAOS.DEMON_ACTIVE && demon) {
+        demon.update();
+        if (!demon.active) demon = null;
+    }
+    
+    if (chaosHole) {
+        chaosHole.pulse += 0.1;
+    }
+
+    if (gameState.ballsMoving && movingCount === 0) {
+        gameState.ballsMoving = false;
+        let playerBalls = balls.filter(b => b.active && b.id !== 0);
+        if (playerBalls.length === 0) {
+            gameState.gameOver = true;
+            document.getElementById('game-over').classList.remove('hidden');
+            document.getElementById('game-over').style.display = 'flex';
+        } else {
+            nextTurn();
+        }
+    }
+    
+    document.getElementById('player-score').innerText = `Игрок: ${gameState.playerScore}`;
+    document.getElementById('bot-score').innerText = `Бот: ${gameState.botScore}`;
+}
+
+function draw() {
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    ctx.fillStyle = COLOR_TABLE;
+    ctx.fillRect(CUSHION_WIDTH, CUSHION_WIDTH, CANVAS_WIDTH - CUSHION_WIDTH*2, CANVAS_HEIGHT - CUSHION_WIDTH*2);
+    
+    ctx.lineWidth = CUSHION_WIDTH;
+    ctx.strokeStyle = COLOR_WOOD;
+    ctx.strokeRect(CUSHION_WIDTH/2, CUSHION_WIDTH/2, CANVAS_WIDTH - CUSHION_WIDTH, CANVAS_HEIGHT - CUSHION_WIDTH);
+
+    ctx.fillStyle = '#000';
+    pockets.forEach(p => {
+        ctx.beginPath();
+        let dx = 0, dy = 0;
+        if (CHAOS.EVASIVE) {
+             dx = (Math.random() - 0.5) * 2;
+             dy = (Math.random() - 0.5) * 2;
+        }
+        ctx.arc(p.pos.x + dx, p.pos.y + dy, POCKET_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    if (chaosHole) {
+        let r = chaosHole.radius + Math.sin(chaosHole.pulse) * 3;
+        ctx.beginPath();
+        ctx.arc(chaosHole.pos.x, chaosHole.pos.y, r, 0, Math.PI * 2);
+        
+        let grad = ctx.createRadialGradient(chaosHole.pos.x, chaosHole.pos.y, 5, chaosHole.pos.x, chaosHole.pos.y, r);
+        if (chaosHole.type === 'bw') {
+            grad.addColorStop(0, 'white');
+            grad.addColorStop(1, 'black');
+        } else if (chaosHole.type === 'pixel') {
+            grad.addColorStop(0, '#0f0');
+            grad.addColorStop(1, '#050');
+        } else {
+            grad.addColorStop(0, 'purple');
+            grad.addColorStop(1, 'indigo');
+        }
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    CHAOS.VOIDS.forEach(v => {
+        ctx.beginPath();
+        ctx.arc(v.pos.x, v.pos.y, v.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#110000';
+        ctx.fill();
+        ctx.strokeStyle = 'red';
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    });
+
+    balls.forEach(b => b.draw());
+
+    if (demon) demon.draw();
+
+    // Slingshot Visuals
+    if (gameState.turn === 'player' && !gameState.ballsMoving && !gameState.gameOver && dragStart && dragCurrent) {
+        const cueBall = balls[0];
+        if (cueBall) {
+            let dragVec = dragStart.sub(dragCurrent);
+            let dist = dragVec.mag();
+            let angle = Math.atan2(dragVec.y, dragVec.x);
+            
+            let visualLen = Math.min(dist, 200); 
+
+            // Aim Line
+            ctx.beginPath();
+            ctx.moveTo(cueBall.pos.x, cueBall.pos.y);
+            let aimEnd = cueBall.pos.add(dragVec.normalize().mult(300));
+            ctx.lineTo(aimEnd.x, aimEnd.y);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Stick
+            ctx.save();
+            ctx.translate(cueBall.pos.x, cueBall.pos.y);
+            ctx.rotate(angle + Math.PI); 
+            
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(15 + visualLen * 0.5, -3, 150, 6);
+            
+            // Force line
+            ctx.beginPath();
+            ctx.moveTo(0,0);
+            ctx.lineTo(15 + visualLen * 0.5, 0);
+            ctx.strokeStyle = `rgba(${Math.min(dist, 255)}, ${255 - Math.min(dist, 255)}, 0, 0.7)`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+    }
+
+    if (CHAOS.PIXEL) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        for (let i = 0; i < CANVAS_HEIGHT; i+=4) {
+            ctx.fillRect(0, i, CANVAS_WIDTH, 1);
+        }
+    }
+}
+
+initGame();
+</script>
+</body>
+</html>
